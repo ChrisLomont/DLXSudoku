@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Microsoft.VisualBasic.CompilerServices;
@@ -24,20 +25,41 @@ namespace Lomont.DLXSudoku
             var sudoku = new Sudoku();
             var sudokus = new List<Sudoku>();
             Regex digits = new Regex("\\d+");
-            var line = 0;
-            foreach (var item in File.ReadAllLines(filename))
+            var lineCount = 0;
+            var lineNumber = 0;
+            foreach (var line in File.ReadAllLines(filename))
             {
-                if (item.Length == 9 && digits.IsMatch(item))
+                ++lineNumber;
+                // read different styles:
+                if (line.Trim().StartsWith("#"))
+                    continue; // comment
+                else if (line.Length == 81)
+                {
+                    // puzzle is entire line
+                    var ss = new Sudoku();
+                    for (var index = 0; index < 81; ++index)
+                    {
+                        var (i,j) = (index % 9,index/9);
+                        var c = line[index];
+                        ss.board[i, j] = (c == '.') ? 0 : c - '0';
+                    }
+                    sudokus.Add(ss);
+                }
+                else if (line.Length == 9 && digits.IsMatch(line))
                 {
                     for (var i = 0 ; i < 9; ++i)
-                        sudoku.board[i, line] = item[i] - '0';
-                    ++line;
-                    if (line == 9)
+                        sudoku.board[i, lineCount] = line[i] - '0';
+                    ++lineCount;
+                    if (lineCount == 9)
                     {
-                        line = 0;
+                        lineCount = 0;
                         sudokus.Add(sudoku);
                         sudoku = new Sudoku();
                     }
+                }
+                else
+                {
+                    Console.WriteLine($"ERROR: unknown format at line number {lineNumber}, starts with {line.Substring(0,Math.Min(line.Length,10))}");
                 }
             }
 
